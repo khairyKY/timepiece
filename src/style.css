@@ -1,0 +1,160 @@
+/* Living Sky. JS writes --zenith / --horizon / --text / --scrim / --night from the sun's altitude.
+   Registered so the sky can ease between states instead of snapping. */
+@property --zenith { syntax: '<color>'; inherits: true; initial-value: #070b18; }
+@property --horizon { syntax: '<color>'; inherits: true; initial-value: #0b1020; }
+@property --text { syntax: '<color>'; inherits: true; initial-value: #e8e4d8; }
+@property --scrim { syntax: '<color>'; inherits: true; initial-value: #0b1020; }
+@property --on-text { syntax: '<color>'; inherits: true; initial-value: #0b1020; }
+
+:root {
+  --ink: #0b1020;
+  --moon: #e8e4d8;
+  --display: 'Bodoni Moda Variable', 'Bodoni Moda', Didot, serif;
+  --ui: 'Geist Variable', 'Geist', system-ui, sans-serif;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.32, 0.72, 0, 1);
+  --gutter: 64px;
+  /* z scale: gl 2 · content 3 · hint 4 · nav 5 · notice 6 */
+  color: var(--text);
+  background: var(--zenith);
+  transition: --zenith 1.4s var(--ease-soft), --horizon 1.4s var(--ease-soft), --text 0.5s var(--ease-soft), --scrim 1.4s var(--ease-soft), --on-text 0.5s var(--ease-soft);
+  font-family: var(--ui);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-height: 100dvh; background: var(--zenith); overflow-x: clip; }
+h1, h2, p, dl, dd { margin: 0; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+
+/* the sky itself is drawn in WebGL (src/skyMesh.ts) so the crystal can refract it */
+.gl { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; touch-action: pan-y; cursor: grab; }
+.gl:focus-visible { outline: 2px solid var(--text); outline-offset: -6px; border-radius: 0; }
+.gl:active { cursor: grabbing; }
+
+/* ── nav: a floating island, nested bezel ─────────────────────────── */
+.nav {
+  position: fixed; z-index: 5; top: 16px; left: 50%; translate: -50% 0; width: max-content;
+  padding: 4px; border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent);
+  backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+.nav__core {
+  display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 4px 0 20px; border-radius: 999px;
+  background: color-mix(in srgb, var(--scrim) 55%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--moon) 12%, transparent);
+}
+.wordmark { font-family: var(--display); font-weight: 500; font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; }
+.nav__rule { width: 1px; height: 16px; background: color-mix(in srgb, var(--text) 25%, transparent); }
+.icon-btn {
+  display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  transition: background 0.4s var(--ease), transform 0.4s var(--ease);
+}
+.icon-btn:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.icon-btn:active { transform: scale(0.94); }
+[data-icon] { display: inline-grid; place-items: center; width: 20px; height: 20px; }
+[data-icon] svg { width: 100%; height: 100%; fill: currentColor; }
+
+/* ── chapters ─────────────────────────────────────────────────────── */
+/* clip: the text scrims bleed past the copy on purpose, but must never widen the page */
+main { position: relative; z-index: 3; pointer-events: none; overflow-x: clip; }
+.ch { display: grid; min-height: 120svh; padding: 96px var(--gutter); }
+.ch--hero { min-height: 100dvh; }
+.copy { pointer-events: auto; position: relative; isolation: isolate; display: grid; gap: 16px; max-width: min(440px, 38vw); }
+/* soft scrim: keeps text ≥ 4.5:1 whatever the sky is doing (verified by `npm run check`) */
+.copy::before {
+  content: ''; position: absolute; inset: -38% -26%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--scrim) 72%, transparent) 70%, transparent);
+}
+
+h1 { font-family: var(--display); font-weight: 500; font-size: clamp(40px, 6.2vw, 72px); line-height: 1.05; letter-spacing: -0.015em; }
+h2 { font-family: var(--display); font-weight: 500; font-size: clamp(32px, 3.4vw, 40px); line-height: 1.1; letter-spacing: -0.01em; }
+p { font-size: 16px; max-width: 60ch; color: color-mix(in srgb, var(--text) 86%, transparent); }
+.lead { font-size: 20px; line-height: 1.45; }
+
+.ch--hero .copy { align-self: center; max-width: min(520px, 44vw); gap: 24px; padding-top: 48px; }
+.ch--right .copy { align-self: center; justify-self: end; }
+.ch--caption .copy { align-self: end; max-width: 560px; }
+.ch--statement .copy { align-self: start; max-width: 720px; padding-top: calc(10svh + 48px); } /* clears the nav when centred */
+.ch--left .copy { align-self: center; }
+.ch--moon .copy { align-self: center; justify-self: end; max-width: 400px; }
+.ch--close .copy { align-self: end; justify-self: center; text-align: center; justify-items: center; max-width: 560px; }
+
+.ratio {
+  font-family: var(--ui); font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: var(--text);
+}
+.ratio { font-size: clamp(40px, 5.6vw, 72px); line-height: 1; white-space: nowrap; }
+.figure-note { font-size: 16px; color: var(--text); }
+
+.preview { font-size: 14px; color: color-mix(in srgb, var(--text) 80%, transparent); }
+.preview__row { display: flex; align-items: center; gap: 12px; width: 100%; }
+.preview__row input { flex: 1; accent-color: var(--text); min-width: 0; }
+.preview__row output { font-variant-numeric: tabular-nums; font-size: 14px; min-width: 40px; }
+
+.sky-controls { display: grid; gap: 12px; justify-items: center; width: min(360px, 100%); margin-top: 8px; }
+.credit { display: grid; gap: 4px; margin-top: 32px; }
+.credit p { font-size: 14px; color: color-mix(in srgb, var(--text) 70%, transparent); }
+
+/* ── buttons ──────────────────────────────────────────────────────── */
+.cta {
+  justify-self: start; display: inline-flex; align-items: center; gap: 16px; padding: 6px 6px 6px 24px;
+  border-radius: 999px; background: var(--text); color: var(--on-text); text-decoration: none; font-weight: 500;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
+  transition: transform 0.5s var(--ease);
+}
+.cta__icon {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px;
+  background: color-mix(in srgb, var(--on-text) 10%, transparent);
+  transition: transform 0.5s var(--ease);
+}
+.cta:hover .cta__icon { transform: translate(2px, 2px) scale(1.05); }
+.cta:active { transform: scale(0.98); }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--text) 45%, transparent); background: color-mix(in srgb, var(--scrim) 40%, transparent);
+  font-size: 14px; font-weight: 500; transition: background 0.4s var(--ease), transform 0.4s var(--ease);
+}
+.btn:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.btn:active { transform: scale(0.98); }
+.btn--quiet { border-color: transparent; background: transparent; padding: 0 8px; text-decoration: underline; text-underline-offset: 4px; }
+.btn[disabled] { opacity: 0.6; cursor: default; }
+
+:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 999px; }
+
+/* ── reveal on entry ──────────────────────────────────────────────── */
+.copy > * { opacity: 0; transform: translateY(24px); filter: blur(6px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease), filter 0.9s var(--ease); transition-delay: calc(var(--i, 0) * 90ms); }
+.is-in .copy > * { opacity: 1; transform: none; filter: none; }
+.still .copy > * { opacity: 1; transform: none; filter: none; transition: none; }
+
+.drag-hint {
+  position: fixed; z-index: 4; right: var(--gutter); bottom: 32px; display: flex; align-items: center; gap: 8px;
+  font-size: 14px; color: color-mix(in srgb, var(--text) 80%, transparent); opacity: 0; transition: opacity 0.8s var(--ease); pointer-events: none;
+}
+.drag-hint.is-on { opacity: 1; }
+
+.nogl { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; padding: 24px; background: var(--ink); color: var(--moon); text-align: center; }
+
+/* ── mobile: watch rides the top, copy sits at the bottom ─────────── */
+@media (max-width: 767px) {
+  :root { --gutter: 16px; }
+  .ch { padding: 96px var(--gutter) 40px; }
+  .ch .copy, .ch--right .copy, .ch--moon .copy, .ch--caption .copy, .ch--left .copy, .ch--statement .copy {
+    align-self: end; justify-self: stretch; max-width: none; padding-top: 0;
+  }
+  .ch--hero .copy { align-self: end; padding-top: 0; }
+  .ch--close .copy { justify-self: stretch; }
+  .ratio { white-space: normal; }
+  .drag-hint { right: 50%; translate: 50% 0; bottom: auto; top: 76px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .copy > * { transform: none; filter: none; transition: opacity 0.3s var(--ease-soft); }
+}

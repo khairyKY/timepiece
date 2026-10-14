@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>K. Shaheen · Polo Skeleton, a study</title>
+    <meta name="description" content="A study of the Piaget Polo Skeleton (G0A46009) rebuilt in code: rose-gold cushion case, blue skeleton calibre 1200S1, and a micro-rotor that swings with gravity. Not affiliated with Piaget." />
+    <meta name="theme-color" content="#0B1020" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230B1020' stroke='%23F3C2A5' stroke-width='2'/%3E%3Crect x='9' y='9' width='14' height='14' rx='5' fill='%232A4F9E'/%3E%3C/svg%3E" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <canvas class="gl" tabindex="0" role="img" aria-label="A 3D rose-gold Piaget Polo Skeleton showing your current time. Drag, or use the arrow keys, to turn it over."></canvas>
+
+    <header class="nav">
+      <div class="nav__core">
+        <a class="wordmark" href="#top">K. Shaheen</a>
+        <span class="nav__rule" aria-hidden="true"></span>
+        <button class="icon-btn" id="sound" type="button" aria-pressed="false" aria-label="Turn tick sound on">
+          <span data-icon="speaker-slash"></span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="ch ch--hero" id="top">
+        <div class="copy">
+          <h1>Polo Skeleton</h1>
+          <p class="lead">A study of Piaget's openworked Polo, rebuilt part by part in code. It keeps your time under your own sky.</p>
+          <a class="cta" href="#case">
+            <span>Take it apart</span>
+            <span class="cta__icon"><span data-icon="arrow-down-right"></span></span>
+          </a>
+        </div>
+      </section>
+
+      <section class="ch ch--right" id="case">
+        <div class="copy">
+          <h2>Six and a half millimetres.</h2>
+          <p>Eighteen-carat rose gold, 42 mm across and 6.5 mm thin with the movement inside. Brushed across the bezel, polished on every chamfer.</p>
+        </div>
+      </section>
+
+      <section class="ch ch--caption" id="cushion">
+        <div class="copy">
+          <h2>A cushion inside a circle.</h2>
+          <p>The Polo's signature: a round case with a cushion-shaped opening. The flange widens into each corner, and the minute track follows the curve.</p>
+        </div>
+      </section>
+
+      <section class="ch ch--left" id="skeleton">
+        <div class="copy">
+          <h2>The dial is the movement.</h2>
+          <p>There is no dial. The calibre 1200S1 is cut away and coated blue, so the barrel, the wheels and the balance show from the front.</p>
+        </div>
+      </section>
+
+      <section class="ch ch--statement" id="exploded">
+        <div class="copy">
+          <h2>Everything inside 2.4 millimetres.</h2>
+          <p class="ratio" aria-label="31.9 by 2.4 millimetres">31.9 × 2.4 mm</p>
+          <p>Calibre 1200S1: 189 parts, 25 jewels, 44 hours of reserve, six beats a second. Its tooth counts are unpublished, so these wheels are modelled.</p>
+        </div>
+      </section>
+
+      <section class="ch ch--moon" id="rotor">
+        <div class="copy">
+          <h2>A rotor set into the plate.</h2>
+          <p>The micro-rotor sits flush inside the movement instead of on top of it. That is how the whole watch stays 6.5 mm thin.</p>
+          <p class="figure-note">Drag the watch and the rotor swings with gravity, as it would on a wrist.</p>
+        </div>
+      </section>
+
+      <section class="ch ch--close" id="together">
+        <div class="copy">
+          <h2>Back together, still on time.</h2>
+          <p>The sky behind the watch is the real sky where you are, right now.</p>
+          <div class="sky-controls">
+            <p class="place"><span data-live="place"></span><span data-live="place-src"></span></p>
+            <button class="btn" id="locate" type="button"><span data-icon="map-pin"></span><span>Use my location</span></button>
+            <label class="preview" for="hour">Preview the sky at another hour</label>
+            <div class="preview__row">
+              <input type="range" id="hour" min="0" max="1435" step="5" />
+              <output id="hour-out" for="hour">Now</output>
+            </div>
+            <button class="btn btn--quiet" id="now" type="button" hidden>Back to now</button>
+          </div>
+          <footer class="credit">
+            <p>A study of the Piaget Polo Skeleton, ref. G0A46009, built in code by Khairy Shaheen, 2026.</p>
+            <p>Not affiliated with or endorsed by Piaget. Piaget and Polo are trademarks of their owner.</p>
+          </footer>
+        </div>
+      </section>
+    </main>
+
+    <p class="drag-hint" aria-hidden="true"><span data-icon="hand-grabbing"></span>Drag to turn it</p>
+    <div class="nogl" hidden>
+      <p>This piece needs WebGL, and this browser has it turned off or unavailable.</p>
+    </div>
+  </body>
+</html>

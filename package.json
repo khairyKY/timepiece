@@ -1,0 +1,26 @@
+{
+  "name": "timepiece",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "node --experimental-strip-types src/astro/check.ts",
+    "zones": "node scripts/zones.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/bodoni-moda": "^5.3.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@phosphor-icons/core": "^2.1.1",
+    "suncalc": "^2.0.2",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "moment-timezone": "^0.6.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}
