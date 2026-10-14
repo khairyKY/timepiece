@@ -2,22 +2,19 @@ import '@fontsource-variable/bodoni-moda/opsz.css';
 import '@fontsource-variable/geist/index.css';
 import './style.css';
 import * as THREE from 'three';
-import speakerHigh from '@phosphor-icons/core/light/speaker-high-light.svg?raw';
-import speakerSlash from '@phosphor-icons/core/light/speaker-slash-light.svg?raw';
 import arrowDownRight from '@phosphor-icons/core/light/arrow-down-right-light.svg?raw';
 import mapPin from '@phosphor-icons/core/light/map-pin-light.svg?raw';
 import handGrabbing from '@phosphor-icons/core/light/hand-grabbing-light.svg?raw';
 import { buildWatch, EXPLODE, EXPLODE_AXIS, type LayerName } from './watch/build';
 import { makeMaterials } from './watch/materials';
 import { studioScene } from './watch/studio';
-import { BEATS_PER_SEC } from './watch/train';
 import { poseAt } from './story';
 import { makeSky } from './skyMesh';
 
-import { guessPlace, skyAt, sunAltitude, sunTimes, MOON, INK, type Place } from './astro/sky';
+import { guessPlace, skyAt, sunAltitude, MOON, INK, type Place } from './astro/sky';
 
 const ICONS: Record<string, string> = {
-  'speaker-high': speakerHigh, 'speaker-slash': speakerSlash, 'arrow-down-right': arrowDownRight,
+  'arrow-down-right': arrowDownRight,
   'map-pin': mapPin, 'hand-grabbing': handGrabbing,
 };
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -32,8 +29,6 @@ const reduced = still
   ? { matches: true }
   : matchMedia('(prefers-reduced-motion: reduce)');
 const secondsSinceMidnight = (d: Date) => d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
-// 24-hour times
-const hhmm = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 function webgl2() {
   try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
@@ -45,27 +40,29 @@ else start();
 async function start() {
   // ── sky first, so the page never flashes the wrong colour ──────────
   let place: Place = guessPlace();
-  let previewMin: number | null = null;
   const root = document.documentElement.style;
   const themeMeta = document.querySelector('meta[name="theme-color"]')!;
 
   // ── renderer ───────────────────────────────────────────────────────
   const coarse = matchMedia('(pointer: coarse)').matches;
-  let high = !coarse && (navigator.hardwareConcurrency ?? 4) >= 6;
+  const high = !coarse && (navigator.hardwareConcurrency ?? 4) >= 6;
   const canvas = $<HTMLCanvasElement>('.gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   // supersample: even on a 1× screen, render the watch at 2× and let the browser downsample —
   // fine teeth, screw slots and minute ticks alias badly at one sample per pixel
-  const targetRatio = () => (high ? 2 : Math.min(Math.max(devicePixelRatio, 1.25), 1.5));
-  renderer.setPixelRatio(targetRatio());
+  renderer.setPixelRatio(high ? 2 : Math.min(Math.max(devicePixelRatio, 1.25), 1.5));
   renderer.toneMapping = THREE.NeutralToneMapping; // Khronos PBR Neutral: true product colour
   renderer.toneMappingExposure = 1.08;
   renderer.shadowMap.enabled = high;
   renderer.shadowMap.type = THREE.PCFShadowMap; // r186 removed PCFSoft; shadow.radius softens instead
+  // the shadow map is redrawn every other frame (see the loop): re-rendering the watch into it was the
+  // costliest thing left, and a shadow one frame old is invisible
+  renderer.shadowMap.autoUpdate = false;
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(studioScene(), 0.02).texture;
+  // 512² reflections on the high tier: polished bevels mirror the softbox edges crisply
+  scene.environment = pmrem.fromScene(studioScene(), 0.012, 0.1, 100, { size: high ? 512 : 256 }).texture;
   pmrem.dispose();
   const camera = new THREE.PerspectiveCamera(26, innerWidth / innerHeight, 1, 3000);
   const key = new THREE.DirectionalLight(0xffffff, 2.6);
@@ -78,6 +75,9 @@ async function start() {
   scene.environmentIntensity = 1.15;
   const sky = makeSky();
   scene.add(key, key.target, hemi, sky.mesh);
+  // No post-processing. Ambient occlusion (GTAO) was tried for contact shadows between bridges and
+  // wheels: barely visible beside the shadow map, and 20–45 ms a frame on a Radeon 660M close-up.
+  // Bloom was tried twice: it turned polished lugs into lamps.
 
   function applySky(at: Date, snap = false) {
     const alt = sunAltitude(at, place);
@@ -109,14 +109,11 @@ async function start() {
   scene.add(watch.root);
 
   // ── live readouts ──────────────────────────────────────────────────
-  function refreshAstro(now: Date) {
-    const t = sunTimes(now, place);
-    live('sunrise', t.sunrise ? hhmm.format(t.sunrise) : t.alwaysUp ? 'Up all day' : 'None today');
-    live('sunset', t.sunset ? hhmm.format(t.sunset) : t.alwaysUp ? 'Up all day' : 'None today');
+  function refreshAstro() {
     live('place', place.label);
     live('place-src', place.exact ? ', from your device.' : ', estimated from your time zone.');
   }
-  refreshAstro(new Date());
+  refreshAstro();
 
   // ── scroll → chapter progress (read in the render loop, no scroll listener) ──
   const sections = [...document.querySelectorAll<HTMLElement>('.ch')];
@@ -168,38 +165,6 @@ async function start() {
   });
   setTimeout(() => { if (!dragged && progress() < 0.5) hint.classList.add('is-on'); }, 2800);
 
-  // ── tick sound: synthesised, off until asked for ───────────────────
-  let audio: AudioContext | null = null, noise: AudioBuffer | null = null, soundOn = false, lastBeat = -1;
-  const soundBtn = $<HTMLButtonElement>('#sound');
-  soundBtn.addEventListener('click', async () => {
-    soundOn = !soundOn;
-    if (soundOn && !audio) {
-      audio = new AudioContext();
-      noise = audio.createBuffer(1, audio.sampleRate * 0.05, audio.sampleRate);
-      const ch = noise.getChannelData(0);
-      for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audio.sampleRate * 0.004));
-    }
-    if (soundOn) await audio!.resume();
-    soundBtn.setAttribute('aria-pressed', String(soundOn));
-    soundBtn.setAttribute('aria-label', soundOn ? 'Turn tick sound off' : 'Turn tick sound on');
-    setIcon(soundBtn.querySelector('[data-icon]')!, soundOn ? 'speaker-high' : 'speaker-slash');
-  });
-  function tick(tock: boolean) {
-    if (!audio || !noise) return;
-    const t = audio.currentTime;
-    const src = audio.createBufferSource();
-    src.buffer = noise;
-    const band = audio.createBiquadFilter();
-    band.type = 'bandpass';
-    band.frequency.value = tock ? 2600 : 3300; // tick and tock differ slightly, like a real lever escapement
-    band.Q.value = 7;
-    const gain = audio.createGain();
-    gain.gain.setValueAtTime(0.5, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
-    src.connect(band).connect(gain).connect(audio.destination);
-    src.start(t);
-  }
-
   // ── location ───────────────────────────────────────────────────────
   const locateBtn = $<HTMLButtonElement>('#locate');
   const locateLabel = locateBtn.querySelector('span:last-child')!;
@@ -210,9 +175,8 @@ async function start() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         place = { lat: pos.coords.latitude, lon: pos.coords.longitude, label: 'Your exact location', exact: true };
-        const now = new Date();
-        refreshAstro(now);
-        applySky(previewDate() ?? now);
+        refreshAstro();
+        applySky(new Date());
         locateLabel.textContent = 'Location set';
       },
       (err) => {
@@ -224,31 +188,6 @@ async function start() {
       },
       { timeout: 10_000, maximumAge: 600_000 },
     );
-  });
-
-  // ── preview the sky at another hour (never changes the watch's time) ──
-  const hour = $<HTMLInputElement>('#hour'), hourOut = $<HTMLOutputElement>('#hour-out'), nowBtn = $<HTMLButtonElement>('#now');
-  const syncSlider = () => { const d = new Date(); hour.value = String(Math.round((d.getHours() * 60 + d.getMinutes()) / 5) * 5); };
-  const previewDate = () => {
-    if (previewMin === null) return null;
-    const d = new Date();
-    d.setHours(Math.floor(previewMin / 60), previewMin % 60, 0, 0);
-    return d;
-  };
-  syncSlider();
-  hour.addEventListener('input', () => {
-    previewMin = Number(hour.value);
-    const d = previewDate()!;
-    hourOut.textContent = hhmm.format(d);
-    nowBtn.hidden = false;
-    applySky(d);
-  });
-  nowBtn.addEventListener('click', () => {
-    previewMin = null;
-    hourOut.textContent = 'Now';
-    nowBtn.hidden = true;
-    syncSlider();
-    applySky(new Date());
   });
 
   // ── layout ─────────────────────────────────────────────────────────
@@ -278,18 +217,17 @@ async function start() {
   const lightDir = new THREE.Vector3(-0.42, 0.62, 0.66).normalize();
   let shadowSpan = 0;
 
-  // ── quality: drop to the lower tier if frames run long ─────────────
-  // steps down in order of what costs most and shows least: resolution → shadows + glass
-  let frames = 0, slow = 0, tier = high ? 3 : 1;
+  // ── hold 60 fps: step the resolution down until frames fit ─────────
+  // A second in which over a quarter of frames ran past 60 Hz takes a quarter off the pixel ratio
+  // (2 → 1); below that, shadows go. Judging the 75th percentile ignores one-off hitches (shader
+  // compiles, texture uploads, GC), which would otherwise ratchet it down for good, yet still catches
+  // the every-other-frame shadow redraws that miss vsync. It never steps back up: no oscillation.
+  const window60: number[] = [];
+  let warm = 0, frameNo = 0;
   function lowerQuality() {
-    if (tier === 3) { renderer.setPixelRatio(1.5); resize(); tier = 2; return; }
-    if (tier !== 2) return;
-    tier = 1; high = false;
-    renderer.setPixelRatio(Math.min(Math.max(devicePixelRatio, 1), 1.25));
+    const pr = renderer.getPixelRatio();
+    if (pr > 1) { renderer.setPixelRatio(Math.max(1, pr - 0.25)); resize(); return; }
     renderer.shadowMap.enabled = key.castShadow = false;
-    for (const mt of [mats.sapphire, mats.ruby]) { mt.transmission = 0; mt.needsUpdate = true; }
-    Object.assign(mats.sapphire, { transparent: true, opacity: 0.12 });
-    resize();
   }
 
   const gLocal = new THREE.Vector3(), qInv = new THREE.Quaternion();
@@ -306,10 +244,6 @@ async function start() {
     // gravity in the watch's own frame drives the micro-rotor (last frame's orientation is close enough)
     gLocal.set(0, -1, 0).applyQuaternion(qInv.copy(watch.root.quaternion).invert());
     watch.update(s, dt, gLocal);
-
-    const beat = Math.floor(s * BEATS_PER_SEC);
-    if (soundOn && beat !== lastBeat) tick(beat % 2 === 1);
-    lastBeat = beat;
 
     const p = progress();
     const pose = poseAt(p);
@@ -356,17 +290,17 @@ async function start() {
     }
 
     sky.step(1 - Math.exp(-dt * 2.2), renderer.getPixelRatio());
+    renderer.shadowMap.needsUpdate = (frameNo++ & 1) === 0;
     renderer.render(scene, camera);
 
     if (performance.now() - lastAstro > 30_000) {
       lastAstro = performance.now();
-      refreshAstro(now);
-      if (previewMin === null) { applySky(now); syncSlider(); }
+      refreshAstro();
+      applySky(now);
     }
-    // rolling 4-second windows (after a warm-up for shader compiles): mostly-slow → step down one tier
-    if (tier > 1 && !document.hidden && ++frames > 90) {
-      if (dt > 1 / 30) slow++;
-      if (frames >= 330) { if (slow > 150) lowerQuality(); frames = 90; slow = 0; }
+    if ((renderer.getPixelRatio() > 1 || key.castShadow) && !document.hidden && ++warm > 90 && window60.push(dt) >= 60) {
+      if (window60.sort((a, b) => a - b)[45] > 1 / 55) lowerQuality();
+      window60.length = 0;
     }
   });
 }

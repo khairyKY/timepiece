@@ -21,7 +21,6 @@ export const EXPLODE_AXIS: Partial<Record<LayerName, 'y'>> = { strapTop: 'y', st
 export const ANCHORS = {
   centre: new THREE.Vector3(0, 0, 0),
   bezelCorner: new THREE.Vector3(-0.7071 * CUSHION.a, 0.7071 * CUSHION.a, 2.6),
-  balance: CALIBRE_ANCHORS.balance,
   rotor: CALIBRE_ANCHORS.rotor,
 };
 

@@ -1,15 +1,14 @@
-// The movement's timekeeping, as pure numbers. Reference: Unitas/ETA 6497-2.
-// See docs/research-2026-09-28.md for sources.
+// The movement's timekeeping, as pure numbers. The 1200S1's tooth counts are unpublished, so the train
+// is MODELLED on the standard 3 Hz arithmetic (21,600 vph); the page says so. See docs/research-polo.md.
 
 export const VPH = 21_600;                  // beats per hour
 export const BEATS_PER_SEC = VPH / 3600;    // 6
 export const BALANCE_HZ = VPH / 7200;       // 3 full swings a second
-export const LIFT_DEG = 44;                 // 6497 lift angle
+export const LIFT_DEG = 44;                 // a typical Swiss-lever lift angle
 export const AMPLITUDE_DEG = 275;
 export const FORK_DEG = 7;                  // pallet fork swing between banking pins
 
 export const TRAIN = {
-  barrel: 75, centrePinion: 10,             // stand-in (Marvin 18,000 vph train); 6497 barrel unpublished
   centre: 80, thirdPinion: 10,
   third: 60, fourthPinion: 8,
   fourth: 120, escapePinion: 10,
@@ -24,7 +23,6 @@ const centre = 1 / 3600;
 const third = -centre * (TRAIN.centre / TRAIN.thirdPinion);
 const fourth = -third * (TRAIN.third / TRAIN.fourthPinion);
 export const RPS = {
-  barrel: -centre * (TRAIN.centrePinion / TRAIN.barrel),
   centre,
   third,
   fourth,

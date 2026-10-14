@@ -30,7 +30,7 @@ Gathered by a research agent + the reference photo (Swisswatches Magazine). Tags
   - 6: **balance** under a bridge.
   - 8–10: **micro-rotor**, seen through an arched aperture.
 - **Back layout**: micro-rotor. A transmission wheel by the crown drives two intermediates, which turn the ratchet wheel over the barrel. The automatic train sits above the rotor. Escape wheel, pallet and balance at the bottom.
-- Tooth counts are **unpublished**. The train is modelled on the standard 3 Hz arithmetic (see `research-2026-09-28.md`) and labelled as modelled on the page.
+- Tooth counts are **unpublished**. The train is modelled on the standard 3 Hz arithmetic (see `src/watch/train.ts`) and labelled as modelled on the page.
 
 ## Dial side
 - Blue **flange** carrying 60 white minute ticks, PIAGET along the curve at ~10:30–11, and SWISS MADE split by the 6 o'clock index (OBS/PRESS).

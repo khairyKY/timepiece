@@ -1,7 +1,7 @@
 // Self-check: `npm run check`. Fails loudly if the maths behind the watch drifts.
 import { strict as assert } from 'node:assert';
 import { TRAIN, MOTION, RPS, BEATS_PER_SEC, VPH, trainTime, balanceDeg, forkDeg } from '../watch/train.ts';
-import { sunAltitude, sunTimes, skyAt, contrast, over, mix, SCRIM, type Place } from './sky.ts';
+import { sunAltitude, skyAt, contrast, over, mix, SCRIM, type Place } from './sky.ts';
 
 const near = (a: number, b: number, tol: number, msg: string) => assert(Math.abs(a - b) <= tol, `${msg}: ${a} vs ${b}`);
 
@@ -21,11 +21,9 @@ near(Math.abs(forkDeg(balanceDeg(7 / 6 + 1 / 24))), 7, 1e-9, 'fork parked at qua
 
 // ── Sun ──
 const cairo: Place = { lat: 30.05, lon: 31.25, label: 'Cairo', exact: false };
-const eq = sunTimes(new Date('2026-09-23T10:00Z'), cairo);
-near(sunAltitude(eq.noon, cairo), 90 - 30.05, 1, 'Cairo equinox noon altitude ≈ 90° − lat');
-assert(eq.sunrise && eq.sunset && eq.sunrise < eq.noon && eq.noon < eq.sunset, 'sunrise < noon < sunset');
-const polar = sunTimes(new Date('2026-12-21T12:00Z'), { lat: 69.65, lon: 18.96, label: 'Tromsø', exact: false });
-assert(polar.alwaysDown && polar.sunrise === null, 'polar night: no sunrise, no crash');
+// Cairo's solar noon at the 2026 September equinox is ≈ 09:52 UTC
+near(sunAltitude(new Date('2026-09-23T09:52Z'), cairo), 90 - 30.05, 1, 'Cairo equinox noon altitude ≈ 90° − lat');
+assert(sunAltitude(new Date('2026-12-21T10:40Z'), { lat: 69.65, lon: 18.96, label: 'Tromsø', exact: false }) < 0, 'polar night: sun below the horizon at noon');
 
 // ── Living Sky: body text ≥ 4.5:1 at every sun altitude, over zenith, horizon and between ──
 let worst = Infinity, worstAt = 0;

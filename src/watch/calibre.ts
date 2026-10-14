@@ -28,10 +28,24 @@ function mesh(g: THREE.BufferGeometry, m: THREE.Material | THREE.Material[], cas
   return o;
 }
 const merge = (gs: THREE.BufferGeometry[]) => mergeGeometries(gs.map((g) => (g.index ? g.toNonIndexed() : g)));
+/** Merge keeping each part's material groups. mergeGeometries drops them, and a mesh with a material
+ *  array but no groups draws nothing at all — which silently hid the barrel's drum and cover. */
+export function mergeGroups(gs: THREE.BufferGeometry[]) {
+  const flat = gs.map((g) => (g.index ? g.toNonIndexed() : g));
+  const out = mergeGeometries(flat);
+  let offset = 0;
+  for (const g of flat) {
+    const n = g.attributes.position.count;
+    if (g.groups.length) for (const gr of g.groups) out.addGroup(offset + gr.start, Math.min(gr.count, n - gr.start), gr.materialIndex ?? 0);
+    else out.addGroup(offset, n, 0);
+    offset += n;
+  }
+  return out;
+}
 function circle(cx: number, cy: number, r: number) { const s = new THREE.Shape(); s.absarc(cx, cy, r, 0, TAU, false); return s; }
 function hole(cx: number, cy: number, r: number) { const p = new THREE.Path(); p.absarc(cx, cy, r, 0, TAU, true); return p; }
 /** Convex hull of circles: bosses round pivots and screws, straight tapered flanks between. */
-function hull(circles: [number, number, number][], seg = 64): THREE.Shape {
+function hull(circles: [number, number, number][], seg = 32): THREE.Shape {
   const pts: [number, number][] = [];
   for (const [x, y, r] of circles) for (let i = 0; i < seg; i++) { const a = (i / seg) * TAU; pts.push([x + r * Math.cos(a), y + r * Math.sin(a)]); }
   pts.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
@@ -53,7 +67,7 @@ function sweep(a: THREE.Vector2, ra: number, b: THREE.Vector2, rb: number, bow: 
 }
 /** Plate part: faces slot 0 (sunburst satin PVD), sides + 45° bevel slot 1 (polished lighter blue). */
 const plate = (shape: THREE.Shape | THREE.Shape[], z0: number, z1: number, bevel = 0.11) =>
-  new THREE.ExtrudeGeometry(shape, { depth: z1 - z0 - 2 * bevel, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 1, curveSegments: 48 })
+  new THREE.ExtrudeGeometry(shape, { depth: z1 - z0 - 2 * bevel, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 1, curveSegments: 32 })
     .translate(0, 0, z0 + bevel);
 /** Polished blind screw, domed, with a bevelled slot; faces ±z. */
 export function screw(x: number, y: number, z: number, dir: 1 | -1, r = 0.4) {
@@ -65,10 +79,16 @@ export function screw(x: number, y: number, z: number, dir: 1 | -1, r = 0.4) {
   return merge([half(0, slot / 2), half(Math.PI, -slot / 2), cut(-Math.PI / 2, slot / 2), cut(Math.PI / 2, -slot / 2),
     new THREE.BoxGeometry(slot * 1.02, h * 0.3, 2 * r * 0.94).translate(0, h * 0.15, 0)]).rotateX(dir * Math.PI / 2).translate(x, y, z);
 }
-const jewel = (x: number, y: number, z: number, dir: 1 | -1, r = 0.34) =>
-  new THREE.SphereGeometry(r, 28, 10, 0, TAU, 0, Math.PI / 2).scale(1, 0.4, 1).rotateX(dir * Math.PI / 2).translate(x, y, z);
+/** A pierced ruby as set in a bridge: a low olive dome with a concave oil sink round the pivot hole.
+ *  (The profile runs rim → axis: LatheGeometry faces a profile's left, and outward-running faced down.) */
+const jewel = (x: number, y: number, z: number, dir: 1 | -1, r = 0.42) =>
+  new THREE.LatheGeometry(([[r, 0], [r, 0.025], [r * 0.93, 0.058], [r * 0.7, 0.07], [0.16, 0.05], [0.075, 0.03], [0.065, 0], [0.001, 0]] as const)
+    .map(([a, b]) => V2(a, b)), 40).rotateX(dir * Math.PI / 2).translate(x, y, z);
+/** The polished steel pivot tip that shows in each jewel's hole. */
+const pivot = (x: number, y: number, z: number, dir: 1 | -1) =>
+  new THREE.SphereGeometry(0.062, 12, 6, 0, TAU, 0, Math.PI / 2).rotateX(dir * Math.PI / 2).translate(x, y, z);
 /** Polished countersink round a jewel, cut into the PVD bridge (so it shows lighter blue). */
-function sink(x: number, y: number, z: number, dir: 1 | -1, r = 0.34) {
+function sink(x: number, y: number, z: number, dir: 1 | -1, r = 0.42) {
   const s = circle(0, 0, r + 0.26); s.holes.push(hole(0, 0, r));
   const g = new THREE.ExtrudeGeometry(s, { depth: 0.03, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.05, bevelSegments: 2, curveSegments: 32 });
   return (dir > 0 ? g : g.rotateX(Math.PI)).translate(x, y, z);
@@ -143,7 +163,6 @@ const K2 = between(K1, d(G.keyless, G.keyless), R, pr(G.keyless) + pr(G.ratchet)
 export const CALIBRE_ANCHORS = {
   balance: new THREE.Vector3(B.x, B.y, 0.6),
   rotor: new THREE.Vector3(ROT.x, ROT.y, -0.8),
-  barrel: new THREE.Vector3(R.x, R.y, 0.6),
 };
 
 export interface Calibre {
@@ -256,7 +275,7 @@ export function buildCalibre(mats: Mats): Calibre {
     win.absarc(0, 0, 3.75, a0, a1, false); win.absarc(0, 0, 1.55, a1, a0, true); win.closePath();
     cover.holes.push(win);
   }
-  barrel.add(mesh(merge([plate(wall, 0.12, 0.44, 0.02), plate(cover, 0.44, 0.52, 0.02)]), silver));
+  barrel.add(mesh(mergeGroups([plate(wall, 0.12, 0.44, 0.02), plate(cover, 0.44, 0.52, 0.02)]), silver));
   barrel.add(mesh(spiralRibbon(1.25, 3.95, 17, 0.07, 0.3), mats.steelPolished));
   barrel.add(mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4, 32).rotateX(Math.PI / 2).translate(0, 0, 0.3), mats.steelPolished));
   train.add(barrel);
@@ -289,10 +308,14 @@ export function buildCalibre(mats: Mats): Calibre {
   balance.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.3, 10).rotateX(Math.PI / 2).translate(0.5 * Math.cos(toFork), 0.5 * Math.sin(toFork), 0.1), mats.ruby));
   balance.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.3, 10).rotateX(Math.PI / 2).translate(0, 0, 0.35), mats.steelPolished));
   balanceG.add(balance);
-  const springPts = 420, TURNS = 8, sR0 = 0.45, sR1 = 2.3;
+  // hairspring: a flat steel ribbon, 0.05 mm wide, re-coiled every frame as the balance swings
+  // (a 1-px line read as a scribble at close range and vanished at 2× supersampling)
+  const springPts = 640, TURNS = 8, sR0 = 0.45, sR1 = 2.3, sW = 0.025;
   const springGeo = new THREE.BufferGeometry();
-  springGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(springPts * 3), 3));
-  const spring = new THREE.Line(springGeo, new THREE.LineBasicMaterial({ color: 0xc9ced6 }));
+  springGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(springPts * 6), 3));
+  springGeo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(springPts * 6).map((_, i) => (i % 3 === 2 ? 1 : 0)), 3));
+  springGeo.setIndex(Array.from({ length: springPts - 1 }, (_, i) => [2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2]).flat());
+  const spring = new THREE.Mesh(springGeo, new THREE.MeshPhysicalMaterial({ color: 0xc9ced6, metalness: 1, roughness: 0.22, side: THREE.DoubleSide }));
   spring.position.set(B.x, B.y, 0.44);
   spring.frustumCulled = false;
   balanceG.add(spring);
@@ -300,7 +323,9 @@ export function buildCalibre(mats: Mats): Calibre {
     const a = springGeo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < springPts; i++) {
       const s = i / (springPts - 1), r = sR0 + (sR1 - sR0) * s, ang = s * TURNS * TAU + theta * (1 - s);
-      a.setXYZ(i, r * Math.cos(ang), r * Math.sin(ang), 0);
+      const c = Math.cos(ang), sn = Math.sin(ang);
+      a.setXYZ(2 * i, (r - sW) * c, (r - sW) * sn, 0);
+      a.setXYZ(2 * i + 1, (r + sW) * c, (r + sW) * sn, 0);
     }
     a.needsUpdate = true;
   };
@@ -378,13 +403,15 @@ export function buildCalibre(mats: Mats): Calibre {
   const jz = CZ.bridges[1];
   const frontJ = [R, W2, T, F, E, PL, B, V2(11.1, 1.9)];
   front.add(mesh(merge(frontJ.map((p) => sink(p.x, p.y, jz, 1))), mats.pvdBlueBevel, false));
-  front.add(mesh(merge(frontJ.map((p) => jewel(p.x, p.y, jz + 0.02, 1))), mats.ruby, false));
-  works.add(mesh(jewel(0, 0, CZ.hourBridge[1] + 0.01, 1, 0.26), mats.ruby, false));
+  front.add(mesh(merge(frontJ.map((p) => jewel(p.x, p.y, jz + 0.005, 1))), mats.ruby, false));
+  front.add(mesh(merge(frontJ.map((p) => pivot(p.x, p.y, jz + 0.01, 1))), mats.steelPolished, false));
+  works.add(mesh(jewel(0, 0, CZ.hourBridge[1] + 0.005, 1, 0.3), mats.ruby, false));
   const bz = CZ.backBridges[0];
   const backJ = [A1, A2, K1, K2, T, F, E, B, W2];
-  back.add(mesh(merge(backJ.map((p) => sink(p.x, p.y, bz, -1))), mats.pvdBlueBevel, false));
-  back.add(mesh(merge(backJ.map((p) => jewel(p.x, p.y, bz - 0.02, -1, 0.3))), mats.ruby, false));
-  back.add(mesh(merge([jewel(ROT.x, ROT.y, CZ.backWheels - 0.2, -1, 0.34)]), mats.ruby, false));
+  back.add(mesh(merge(backJ.map((p) => sink(p.x, p.y, bz, -1, 0.36))), mats.pvdBlueBevel, false));
+  back.add(mesh(merge(backJ.map((p) => jewel(p.x, p.y, bz - 0.005, -1, 0.36))), mats.ruby, false));
+  back.add(mesh(merge(backJ.map((p) => pivot(p.x, p.y, bz - 0.01, -1))), mats.steelPolished, false));
+  back.add(mesh(merge([jewel(ROT.x, ROT.y, CZ.backWheels - 0.2, -1, 0.4)]), mats.ruby, false));
   const frontScrews = [...barrelFeet, ringAt(-12), ringAt(58), ringAt(-62), B.clone().add(polar(5.6, 195)), B.clone().add(polar(5.6, -15)), V2(13.2, 4.4), V2(12.9, -3.6)];
   front.add(mesh(merge(frontScrews.map((p) => screw(p.x, p.y, jz, 1))), mats.steelPolished));
   const backScrews = [polar(14.2, 128), polar(14.2, 175), polar(14.2, 20), polar(14.2, -30), polar(14.2, -80)];

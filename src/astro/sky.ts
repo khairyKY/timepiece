@@ -1,4 +1,4 @@
-import { getPosition, getTimes } from 'suncalc';
+import { getPosition } from 'suncalc';
 import zones from './zones.json' with { type: 'json' };
 
 // suncalc v2: degrees everywhere, altitude includes refraction, non-events are null.
@@ -17,11 +17,6 @@ export function guessPlace(tz = Intl.DateTimeFormat().resolvedOptions().timeZone
 }
 
 export const sunAltitude = (d: Date, p: Place) => getPosition(d, p.lat, p.lon).altitude;
-
-export function sunTimes(d: Date, p: Place) {
-  const t = getTimes(d, p.lat, p.lon);
-  return { sunrise: t.sunrise, sunset: t.sunset, noon: t.solarNoon, alwaysUp: !!t.alwaysUp, alwaysDown: !!t.alwaysDown };
-}
 
 // ── Living Sky palette ──────────────────────────────────────────────
 // Stops keyed on sun altitude (degrees): [altitude, zenith, horizon].

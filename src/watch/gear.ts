@@ -11,8 +11,6 @@ export interface GearSpec {
 }
 
 export const pitchRadius = (g: GearSpec) => (g.module * g.teeth) / 2;
-/** centre distance for a wheel driving a pinion of the same module */
-export const meshDistance = (a: GearSpec, b: GearSpec) => pitchRadius(a) + pitchRadius(b);
 
 function toothProfile(u: number, club: boolean): number {
   if (!club) {

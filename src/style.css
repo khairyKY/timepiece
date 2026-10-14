@@ -47,18 +47,11 @@ button { font: inherit; color: inherit; }
   backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
 }
 .nav__core {
-  display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 4px 0 20px; border-radius: 999px;
+  display: flex; align-items: center; height: 40px; padding: 0 22px; border-radius: 999px;
   background: color-mix(in srgb, var(--scrim) 55%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--moon) 12%, transparent);
 }
 .wordmark { font-family: var(--display); font-weight: 500; font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; }
-.nav__rule { width: 1px; height: 16px; background: color-mix(in srgb, var(--text) 25%, transparent); }
-.icon-btn {
-  display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
-  transition: background 0.4s var(--ease), transform 0.4s var(--ease);
-}
-.icon-btn:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
-.icon-btn:active { transform: scale(0.94); }
 [data-icon] { display: inline-grid; place-items: center; width: 20px; height: 20px; }
 [data-icon] svg { width: 100%; height: 100%; fill: currentColor; }
 
@@ -93,7 +86,6 @@ p { font-size: 16px; max-width: 60ch; color: color-mix(in srgb, var(--text) 86%,
 .ratio { font-size: clamp(40px, 5.6vw, 72px); line-height: 1; white-space: nowrap; }
 .figure-note { font-size: 16px; color: var(--text); }
 
-.preview { font-size: 14px; color: color-mix(in srgb, var(--text) 80%, transparent); }
 .preview__row { display: flex; align-items: center; gap: 12px; width: 100%; }
 .preview__row input { flex: 1; accent-color: var(--text); min-width: 0; }
 .preview__row output { font-variant-numeric: tabular-nums; font-size: 14px; min-width: 40px; }
@@ -123,7 +115,6 @@ p { font-size: 16px; max-width: 60ch; color: color-mix(in srgb, var(--text) 86%,
 }
 .btn:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
 .btn:active { transform: scale(0.98); }
-.btn--quiet { border-color: transparent; background: transparent; padding: 0 8px; text-decoration: underline; text-underline-offset: 4px; }
 .btn[disabled] { opacity: 0.6; cursor: default; }
 
 :focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 999px; }

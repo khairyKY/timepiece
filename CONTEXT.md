@@ -119,6 +119,19 @@ Kai: *"it looks great but can we use a real watch now?"* → the **Piaget Polo S
   - Strap sheen tempered (higher roughness, lower specular).
 - Remaining: lugs a touch boxy; the exploded crystal sits partly off-frame at 1440 × 900; FPS on the 660M at 2× still unmeasured.
 
+## v3: realism rebuild, no personal brand, 60 fps (2026-10-14, Kai)
+Kai: *"remove my name from it, I am only the dev — give me credit but I am not the brand"*, then *"redo the model, super realistic, super high quality"*, then *"audit the website, it has unneeded stuff, and make it 60fps"*.
+- **Branding**: the nav wordmark is **TIMEPIECE**, the page title *Polo Skeleton, a study*. Kai's name appears only as credit (footer + README: "Designed and built by Khairy Shaheen"). Supersedes the "K. Shaheen" title defaults above.
+- **Case rebuilt** (`polo.ts`) from Monochrome's press photos: one revolved section for the case middle (polished rounded lower edge, horizontally brushed flank, polished lip); bezel round outside / cushion inside with a brushed east–west top, rounded polished outer edge and a crisp polished chamfer; **lugs lofted out of the flank** (flared root inside the band, drooping 1 mm toward the wrist, squircle tips) — the old lugs never rendered at all (see bug below); fluted crown with a medallion face; strap that butts against the case flank; caseback ring as a revolved section with mirrored-uv engraving.
+- **Alligator strap**: domed rectangular centre scales with leaning shared edges, half-height scales either side, small round scales toward the stitching, fine wrinkles, painted edges; height-driven normal, roughness **and AO map** (rough creases alone caught the overhead softbox and read lighter than the scales).
+- **Studio env**: softboxes with feathered falloff and hot centres + two small hard kickers, PMREM 512² on the high tier.
+- **Movement**: pierced rubies with oil sinks and steel pivots, ribbon hairspring (was a 1-px line), sunburst satin toned down.
+- **Bug that hid parts since v2**: `mergeGeometries` drops material groups, and a mesh with a material **array** but no groups draws nothing — the lugs and the barrel's drum/cover were invisible. `mergeGroups` in `calibre.ts` keeps them.
+- **Bug**: LatheGeometry faces a profile's left — a profile running outward from the axis faces down (jewels were culled). Run profiles rim → axis.
+- **Tried and removed** (don't retry without a reason): GTAO ambient occlusion (barely visible beside the shadow map; 20–45 ms/frame on the 660M close-up even at half res) · bloom (third time: lugs glowed like lamps) · PVD iridescence (went purple) · **crystal transmission** (re-rendered the whole watch every frame for an invisible refraction offset; 75 → 8 ms in close-up when removed). The sapphire is now a reflection-only additive material.
+- **60 fps** (measured on Kai's Radeon 660M, headless Edge D3D11): shadow map redrawn every other frame; only parts whose shadows show cast them (not straps/lugs/crown/case middle); movement arcs 64 → 32 segments. Dynamic resolution: each second whose 75th-percentile frame misses 60 Hz drops the pixel ratio 0.25 (2 → 1), then shadows; never steps back up. Settles ≈ 1.5× on the hero, 1× in close-ups; p90 ≤ 17 ms in every chapter but the skeleton close-up.
+- **Audit cuts**: tick sound + hour-preview slider (Kai's pick); dead sunrise/sunset readouts and `sunTimes`; v1 6497 leftovers in `train.ts`; unused anchors and `meshDistance`; `scripts/zones.mjs` + `moment-timezone` (zones.json stays, regenerate by hand if ever needed); `docs/research-2026-09-28.md` (v1 research). Kept: Use my location, drag hint.
+
 ## Open questions
 - Where it's hosted (Vercel / GitHub Pages / portfolio link) — decided at ship, not now. Publishing asks Kai first.
 - Project Board: this project isn't listed yet. It belongs to the Freelance lane as a portfolio showpiece — Kai's call whether to add it.
